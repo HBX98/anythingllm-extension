@@ -1,40 +1,40 @@
 const ContextMenuModel = {
   async create(workspaces) {
-    await chrome.contextMenus.removeAll();
+    await browser.contextMenus.removeAll();
 
     if (workspaces && workspaces.length > 0) {
-      chrome.contextMenus.create({
+      browser.contextMenus.create({
         id: "saveToAnythingLLM",
         title: "Save selected to AnythingLLM",
         contexts: ["selection"],
       });
 
-      chrome.contextMenus.create({
+      browser.contextMenus.create({
         id: "embedToWorkspace",
         title: "Embed selected content to workspace",
         contexts: ["selection"],
       });
 
-      chrome.contextMenus.create({
+      browser.contextMenus.create({
         id: "saveEntirePageToAnythingLLM",
         title: "Save entire page to AnythingLLM",
         contexts: ["page"],
       });
 
-      chrome.contextMenus.create({
+      browser.contextMenus.create({
         id: "embedEntirePageToWorkspace",
         title: "Embed entire page to workspace",
         contexts: ["page"],
       });
 
       workspaces.forEach((workspace) => {
-        chrome.contextMenus.create({
+        browser.contextMenus.create({
           id: `workspace-selected-${workspace.id}`,
           parentId: "embedToWorkspace",
           title: workspace.name,
           contexts: ["selection"],
         });
-        chrome.contextMenus.create({
+        browser.contextMenus.create({
           id: `workspace-page-${workspace.id}`,
           parentId: "embedEntirePageToWorkspace",
           title: workspace.name,
@@ -42,12 +42,12 @@ const ContextMenuModel = {
         });
       });
     } else {
-      chrome.contextMenus.create({
+      browser.contextMenus.create({
         id: "saveToAnythingLLM",
         title: "Save selected to AnythingLLM",
         contexts: ["selection"],
       });
-      chrome.contextMenus.create({
+      browser.contextMenus.create({
         id: "saveEntirePageToAnythingLLM",
         title: "Save entire page to AnythingLLM",
         contexts: ["page"],
@@ -56,13 +56,13 @@ const ContextMenuModel = {
   },
 
   async remove() {
-    await chrome.contextMenus.removeAll();
+    await browser.contextMenus.removeAll();
   },
 };
 
 const ExtensionModel = {
   async checkApiKeyValidity() {
-    const { apiBase, apiKey } = await chrome.storage.sync.get([
+    const { apiBase, apiKey } = await browser.storage.sync.get([
       "apiBase",
       "apiKey",
     ]);
@@ -82,7 +82,7 @@ const ExtensionModel = {
       .catch(() => null);
 
     if (data === null) {
-      await chrome.storage.sync.remove(["apiBase", "apiKey"]);
+      await browser.storage.sync.remove(["apiBase", "apiKey"]);
       await ContextMenuModel.remove();
       return false;
     }
@@ -92,7 +92,7 @@ const ExtensionModel = {
   },
 
   async updateWorkspaces() {
-    const { apiBase, apiKey } = await chrome.storage.sync.get([
+    const { apiBase, apiKey } = await browser.storage.sync.get([
       "apiBase",
       "apiKey",
     ]);
@@ -114,7 +114,7 @@ const ExtensionModel = {
   },
 
   async saveToAnythingLLM(selectedText, pageTitle, pageUrl) {
-    const { apiBase, apiKey } = await chrome.storage.sync.get([
+    const { apiBase, apiKey } = await browser.storage.sync.get([
       "apiBase",
       "apiKey",
     ]);
@@ -143,7 +143,7 @@ const ExtensionModel = {
   },
 
   async embedToWorkspace(workspaceId, selectedText, pageTitle, pageUrl) {
-    const { apiBase, apiKey } = await chrome.storage.sync.get([
+    const { apiBase, apiKey } = await browser.storage.sync.get([
       "apiBase",
       "apiKey",
     ]);
@@ -170,7 +170,7 @@ const ExtensionModel = {
   },
 
   async saveEntirePageToAnythingLLM(pageContent, pageTitle, pageUrl) {
-    const { apiBase, apiKey } = await chrome.storage.sync.get([
+    const { apiBase, apiKey } = await browser.storage.sync.get([
       "apiBase",
       "apiKey",
     ]);
@@ -204,7 +204,7 @@ const ExtensionModel = {
     pageTitle,
     pageUrl
   ) {
-    const { apiBase, apiKey } = await chrome.storage.sync.get([
+    const { apiBase, apiKey } = await browser.storage.sync.get([
       "apiBase",
       "apiKey",
     ]);
@@ -232,7 +232,7 @@ const ExtensionModel = {
 
   async handleResponse(response, action) {
     if (response.status === 401 || response.status === 403) {
-      await chrome.storage.sync.remove(["apiBase", "apiKey"]);
+      await browser.storage.sync.remove(["apiBase", "apiKey"]);
       await ContextMenuModel.remove();
       this.showNotification(
         'error',
@@ -271,29 +271,29 @@ const ExtensionModel = {
     }
     if (!NOTIFICATION_MAP.hasOwnProperty(type)) return;
     const { icon, title } = NOTIFICATION_MAP[type];
-    chrome.action.setBadgeText({ text: icon })
-    chrome.action.setTitle({ title: `${title}: ${message}` });
+    browser.action.setBadgeText({ text: icon })
+    browser.action.setTitle({ title: `${title}: ${message}` });
 
     setTimeout(() => {
-      chrome.action.setBadgeText({ text: "" });
-      chrome.action.setTitle({ title: "AnythingLLM Extension" });
+      browser.action.setBadgeText({ text: "" });
+      browser.action.setTitle({ title: "AnythingLLM Extension" });
     }, 5000);
   },
 };
 
 // Event Listeners
-chrome.runtime.onInstalled.addListener(async () => {
+browser.runtime.onInstalled.addListener(async () => {
   await ExtensionModel.checkApiKeyValidity();
 });
 
-chrome.runtime.onMessage.addListener((message, _sender, _sendResponse) => {
+browser.runtime.onMessage.addListener((message, _sender, _sendResponse) => {
   if (message.action === "connectionUpdated") return ExtensionModel.checkApiKeyValidity();
 
   if (message.action === "newApiKey") {
     const [apiBase, apiKey] = message.connectionString.split("|");
-    chrome.storage.sync.set({ apiBase, apiKey }, () => {
+    browser.storage.sync.set({ apiBase, apiKey }, () => {
       ExtensionModel.checkApiKeyValidity();
-      chrome.action.openPopup();
+      browser.action.openPopup();
     });
     return;
   }
@@ -301,9 +301,9 @@ chrome.runtime.onMessage.addListener((message, _sender, _sendResponse) => {
 
 function getPageContent(tabId) {
   return new Promise((resolve, reject) => {
-    chrome.tabs.sendMessage(tabId, { action: "getPageContent" }, (response) => {
-      if (chrome.runtime.lastError) {
-        reject(chrome.runtime.lastError);
+    browser.tabs.sendMessage(tabId, { action: "getPageContent" }, (response) => {
+      if (browser.runtime.lastError) {
+        reject(browser.runtime.lastError);
       } else if (response && response.content) {
         resolve(response.content);
       } else {
@@ -313,7 +313,7 @@ function getPageContent(tabId) {
   });
 }
 
-chrome.contextMenus.onClicked.addListener((info, tab) => {
+browser.contextMenus.onClicked.addListener((info, tab) => {
   if (info.menuItemId === "saveToAnythingLLM") {
     ExtensionModel.saveToAnythingLLM(info.selectionText, tab.title, tab.url);
     return;
@@ -368,7 +368,7 @@ chrome.contextMenus.onClicked.addListener((info, tab) => {
 });
 
 // Remove context menu items when connection is lost
-chrome.storage.onChanged.addListener((changes, namespace) => {
+browser.storage.onChanged.addListener((changes, namespace) => {
   if (namespace === "sync" && (changes.apiBase || changes.apiKey)) {
     if (!changes.apiBase?.newValue || !changes.apiKey?.newValue) {
       ContextMenuModel.remove();
@@ -377,8 +377,8 @@ chrome.storage.onChanged.addListener((changes, namespace) => {
 });
 
 // Update workspaces periodically
-chrome.alarms.create("updateWorkspaces", { periodInMinutes: 1 });
-chrome.alarms.onAlarm.addListener((alarm) => {
+browser.alarms.create("updateWorkspaces", { periodInMinutes: 1 });
+browser.alarms.onAlarm.addListener((alarm) => {
   if (alarm.name === "updateWorkspaces") {
     ExtensionModel.updateWorkspaces();
   }
